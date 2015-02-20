@@ -3,6 +3,15 @@ import Ember from 'ember';
 export default Ember.Controller.extend({
   error: '',
 
+  saveUrl: function(url) {
+    url.save().then(function() {
+      this.set('model', this.store.createRecord('url'));
+      this.set('error', '');
+    }.bind(this), function() {
+      this.set('error', 'invalid url');
+    }.bind(this));
+  },
+
   generateHexToken: function() {
     var result = '';
     var n = 4;
@@ -12,46 +21,35 @@ export default Ember.Controller.extend({
     return result;
   },
 
-  findBy: function(attribute, value) {
-    var result;
-    new window.Firebase("https://crackling-inferno-9996.firebaseio.com/urls")
-      .orderByChild(attribute)
-      .startAt(value)
-      .endAt(value)
-      .once('value', function(snap) {
-        result = snap.val();
-      });
-    return result;
-  },
-
   ensureUniqueToken: function() {
-    var tokenNotUniq = true;
-    var token = '';
-    while (tokenNotUniq){
-      token = this.generateHexToken();
-      tokenNotUniq = this.findBy("token", token);
-    }
-    return token;
+    var token = this.generateHexToken();
+    return this.store.find('url', {token: token}).then(function(models){
+      if (models.get('length') > 0){
+        this.ensureUniqueToken();
+      }else{
+        return token;
+      }
+    }.bind(this));
   },
 
   actions: {
     saveUrl: function() {
       var newUrl = this.get('model');
-      var check = this.findBy("originalUrl", newUrl.get("originalUrl"));
-      if (check){
-        this.set('model.originalUrl', "");
-        this.set('error', 'url already exists');
-      }else{
-        newUrl.set('token', this.ensureUniqueToken());
-        newUrl.set('createdAt', 'createdAt');
-        newUrl.set('hitCount', 'hitCount');
-        newUrl.save().then(function() {
-          this.set('model', this.store.createRecord('url'));
-          this.set('error', '');
-        }.bind(this), function() {
-          this.set('error', 'invalid url');
-        }.bind(this));
-      }
+      this.store.find('url', {originalUrl: newUrl.get('originalUrl')}).then(function(models){
+        if (models.get('length') > 0){
+          this.set('model.originalUrl', "");
+          this.set('error', 'url already exists');
+        }else{
+          this.ensureUniqueToken().then(function(token){
+            newUrl.setProperties({
+              token: token,
+              createdAt: new Date(),
+              hitCount: 0
+            });
+            this.saveUrl(newUrl);
+          }.bind(this));
+        }
+      }.bind(this));
     }
   }
 });

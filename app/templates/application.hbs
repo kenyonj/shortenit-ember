@@ -1,9 +1,8 @@
-<h2 id="title">Welcome to Ember.js</h2>
-
 {{outlet}}
 
 {{#each model as |url|}}
   <p>
+    {{#link-to "url" url}} GO {{/link-to}}
     {{url.originalUrl}} - {{url.token}}
   </p>
 {{/each}}
