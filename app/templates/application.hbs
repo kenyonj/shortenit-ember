@@ -3,5 +3,7 @@
 {{outlet}}
 
 {{#each model as |url|}}
-  {{url.originalUrl}}
+  <p>
+    {{url.originalUrl}} - {{url.token}}
+  </p>
 {{/each}}
